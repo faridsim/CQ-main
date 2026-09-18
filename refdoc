@@ -1,0 +1,237 @@
+تمرین طراحی و پیاده‌سازی Circular Queue در C++
+1. هدف تمرین
+هدف این تمرین، ارزیابی توانایی در طراحی و پیاده‌سازی یک ماژول C++ با تمرکز بر موارد زیر است:
+    • طراحی صحیح و قابل نگهداری در C++
+    • مدیریت هم‌زمانی (Concurrency)
+    • طراحی برای محیط‌های Embedded و محدودیت منابع
+    • رفتار Deterministic
+    • کنترل صحت و اعتبار داده
+    • مدیریت شرایط خطا
+    • استفاده مناسب از قابلیت‌های Compile-Time در C++
+    • رعایت اصول MISRA C++
+
+2. شرح مسئله
+یک ماژول Circular Queue طراحی و پیاده‌سازی کنید که بتواند به‌صورت هم‌زمان توسط چند Writer و چند Reader مورد استفاده قرار گیرد.
+نوع داده‌ای که در Queue قرار می‌گیرد باید به‌صورت Generic طراحی شود و Queue نباید به یک نوع داده خاص وابسته باشد.
+
+3. محدودیت Memory و Pointer
+Queue باید کاملاً بدون Dynamic Memory و بدون استفاده مستقیم از Pointer طراحی و پیاده‌سازی شود.
+موارد زیر در Source Code مربوط به Queue ممنوع هستند:
+    • new
+    • delete
+    • malloc
+    • free
+    • Pointer برای ذخیره یا دسترسی به Itemها
+    • Pointer برای مدیریت حافظه Queue
+    • Smart Pointerهایی مانند std::unique_ptr و std::shared_ptr
+تمام حافظه مورد نیاز Queue باید به‌صورت Static یا مستقیماً در ساختار Queue تأمین شود.
+ظرفیت Queue باید در زمان Compile Time مشخص باشد.
+استفاده از ID یا Handleهای ارائه‌شده توسط سیستم‌عامل ، مانند Semaphore ID، Event ID و موارد مشابه، مجاز است؛ مشروط بر اینکه Queue برای مدیریت حافظه یا دسترسی به Itemها از Pointer استفاده نکند.
+Queue باید دارای رفتار Deterministic باشد.
+
+4. چند Writer و چند Reader
+Queue باید قابلیت پشتیبانی هم‌زمان از:
+    • چند Writer
+    • چند Reader
+را داشته باشد.
+عملیات یک Writer یا Reader نباید باعث ایجاد موارد زیر شود:
+    • Race Condition
+    • Data Race
+    • Data Corruption
+    • Undefined Behavior
+مکانیزم Synchronization بر عهده طراح است.
+
+5. Notification / Event
+اضافه شدن یک Item جدید به Queue باید به‌صورت Event/Notification به Readerهای مربوطه اعلام شود.
+Reader نباید برای تشخیص وجود Item جدید مجبور به Polling مداوم Queue باشد.
+مکانیزم Notification و Synchronization بر عهده طراح است و باید در Design Note توضیح داده شود.
+
+6. وضعیت مستقل Readerها
+هر Reader باید وضعیت خواندن مستقل خود را داشته باشد.
+خواندن یک Item توسط یک Reader نباید باعث حذف آن Item یا تغییر وضعیت آن برای سایر Readerها شود.
+هر Reader باید بتواند بر اساس وضعیت مستقل خود، Itemهای قابل دریافت را تشخیص دهد.
+
+7. Overwrite و از دست رفتن Item
+Queue از ساختار Circular استفاده می‌کند.
+در صورت پر شدن Queue، Itemهای قدیمی می‌توانند توسط Itemهای جدید Overwrite شوند.
+هر Reader باید بتواند به‌صورت مستقل تشخیص دهد که به دلیل Overwrite شدن، یک یا چند Item را از دست داده است.
+این وضعیت باید به‌صورت مشخص به Reader گزارش شود.
+نحوه تشخیص Overwrite و Lost Item بر عهده طراح است.
+
+8. Timestamp و Expiration
+8.1. Timestamp
+هر Item موجود در Queue باید دارای Timestamp باشد.
+Timestamp باید هنگام ورود Item به Queue ثبت شود.
+Queue باید بتواند با استفاده از Timestamp، اعتبار زمانی Item را بررسی کند.
+منبع زمان و نحوه دریافت Timestamp باید توسط طراح مشخص و مستند شود.
+
+8.2. Expiration Time
+Queue باید دارای یک Expiration Time قابل تنظیم باشد.
+این مقدار مشخص می‌کند که یک Item حداکثر چه مدت می‌تواند معتبر باقی بماند.
+Expiration Time باید هنگام ایجاد یا Initialization شدن Queue مشخص شود.
+واحد زمان می‌تواند بر اساس طراحی، Millisecond یا Second باشد.
+برای مثال:
+CircularQueue<Item, 100> queue(5000);
+که در آن 5000 می‌تواند بیانگر 5000 میلی‌ثانیه باشد.
+Itemهایی که از زمان اعتبار تعیین‌شده عبور کرده‌اند باید به‌عنوان Expired شناخته شوند و Queue باید این وضعیت را به Reader گزارش کند.
+
+9. CRC و Data Integrity
+Queue باید برای هر Item به‌صورت مستقل CRC محاسبه و ذخیره کند.
+CRC  باید تمام بخش‌های معتبر و تعریف‌شده محتوای Item را پوشش دهد، به‌گونه‌ای که تغییر در هر بخش از محتوای Item توسط مکانیزم CRC قابل تشخیص باشد.
+نوع Item می‌تواند یک نوع ساده مانند:
+int
+یا یک Structure شامل چند عضو باشد:
+struct Data
+{
+    uint32_t id;
+    uint16_t value;
+    uint8_t status;
+};
+در صورت استفاده از Structure، تمام بخش‌های معتبر و تعریف‌شده محتوای Structure باید در محاسبه CRC لحاظ شوند.
+روش تعیین محدوده داده‌ای که CRC روی آن محاسبه می‌شود باید توسط طراح مشخص و مستند شود.
+برای هر Item موجود در Queue باید CRC مستقل وجود داشته باشد.
+
+9.1. بررسی CRC
+بررسی
+
+CRC باید توسط خود Queue Module انجام شود.
+Caller یا Reader نباید مسئول محاسبه یا بررسی CRC داخلی Queue باشد.
+Queue باید بتواند تشخیص دهد که محتوای Item از زمان محاسبه CRC تا زمان بررسی، تغییر کرده است یا خیر.
+
+10. وضعیت Item
+   Queue باید بتواند حداقل وضعیت‌های زیر برای هر آیتم استخراج شده از صف، گزارش کند:
+    • Item معتبر
+    • CRC Error
+    • Expired Item
+    • Overwritten / Lost Item
+    • Empty / No Item
+نحوه ارائه این وضعیت‌ها از طریق API بر عهده طراح است.
+
+11. Generic Design
+Queue باید برای انواع مختلف Item قابل استفاده باشد.
+حداقل باید امکان استفاده از:
+    • یک Data Type ساده
+    • یک Structure شامل چند عضو
+وجود داشته باشد.
+Queue نباید به یک Data Type خاص وابسته باشد.
+در صورت نیاز به Trait،  Policy یا مکانیزم مشابه برای تعریف رفتار Type، طراحی آن بر عهده طراح است.
+
+12. Compile-Time Checks
+استفاده از Compile-Time Checks پیشنهاد می‌شود.
+موارد قابل بررسی در Compile Time، در صورت امکان، بهتر است در همان زمان بررسی شوند.
+برای مثال:
+    • ظرفیت Queue
+    • محدودیت‌های مربوط به Type
+    • اندازه Item
+    • سایر پارامترهای ثابت طراحی
+هدف، کاهش خطاهای قابل تشخیص در Runtime و افزایش Determinism سیستم است.
+
+13. Synchronization
+طراحی Queue باید به‌گونه‌ای باشد که دسترسی هم‌زمان چند Writer و چند Reader باعث موارد زیر نشود:
+    • Data Race
+    • Race Condition
+    • Data Corruption
+    • Lost Notification
+    • Undefined Behavior
+مکانیزم Synchronization بر عهده طراح است.
+انتخاب روش Synchronization باید همراه با دلیل انتخاب در Design Note توضیح داده شود.
+استفاده از مکانیزم‌های Synchronization سیستم‌عامل یا RTOS، مانند Semaphore یا Event، در صورت نیاز مجاز است.
+
+14. MISRA C++
+رعایت اصول و الزامات MISRA C++ ضروری است.
+در صورتی که بخشی از طراحی یا Implementation به دلیل محدودیت فنی یا تصمیم طراحی نتواند یک Rule مشخص را رعایت کند، آن مورد باید:
+    1. مشخص شود.
+    2. دلیل عدم رعایت آن توضیح داده شود.
+    3. در Design Note مستند شود.
+
+15. Documentation
+توضیحات مناسب برای موارد زیر الزامی است:
+    • Classها
+    • Functionهای اصلی
+    • Interfaceها
+    • پارامترهای مهم
+    • رفتارهای خاص
+    • شرایط خطا
+مستندات باید به اندازه‌ای باشد که یک مهندس دیگر بتواند منطق و نحوه استفاده از Queue را درک کند.
+
+16. Unit Test
+برای Queue باید Unit Test ارائه شود.
+حداقل موارد زیر باید تست شوند:
+    • Write و Read عادی
+    • چند Writer
+    • چند Reader
+    • Queue خالی
+    • Wrap Around
+    • Overwrite
+    • CRC صحیح
+    • CRC Error
+    • Timestamp
+    • Expiration
+    • هم‌زمانی Reader و Writer
+    • Boundary Conditions
+تست‌ها باید نشان دهند که Queue در شرایط عادی و شرایط خطا رفتار مورد انتظار را دارد.
+
+17. Design Note
+همراه Source Code یک Design Note کوتاه ارائه شود.
+این مستند حداقل باید شامل موارد زیر باشد:
+    • معماری کلی Queue
+    • نحوه مدیریت چند Writer و چند Reader
+    • نحوه نگهداری وضعیت مستقل Readerها
+    • نحوه تشخیص Overwrite و Lost Item
+    • روش Notification
+    • روش Synchronization
+    • روش محاسبه و بررسی CRC
+    • روش مدیریت Timestamp
+    • روش مدیریت Expiration
+    • تصمیمات مهم طراحی و دلیل انتخاب آن‌ها
+    • محدودیت‌ها و موارد قابل بهبود
+    • موارد عدم انطباق با MISRA، در صورت وجود
+
+18. خروجی مورد انتظار
+موارد زیر باید تحویل داده شوند:
+    1. Source Code کامل Queue
+    2. Header و Implementation مربوطه
+    3. Unit Testها
+    4. Design Note
+    5. توضیحات مربوط به تصمیمات مهم طراحی
+    6. در صورت وجود، مستندات مربوط به موارد عدم انطباق با MISRA C++
+
+19. معیار ارزیابی
+در ارزیابی این تمرین صرفاً عملکرد Queue در شرایط عادی ملاک نیست.
+موارد زیر نیز مورد توجه قرار خواهند گرفت:
+    • کیفیت معماری
+    • کیفیت Interface
+    • درک صحیح از Concurrency
+    • مدیریت صحیح چند Reader و Writer
+    • رفتار Deterministic
+    • عدم استفاده از Dynamic Memory
+    • عدم استفاده مستقیم از Pointer در Queue
+    • Robustness
+    • مدیریت شرایط خطا
+    • Data Integrity
+    • طراحی Generic
+    • استفاده مناسب از قابلیت‌های C++
+    • استفاده مناسب از Compile-Time Checks
+    • رعایت MISRA C++
+    • خوانایی و Maintainability
+    • کیفیت Unit Testها
+    • کیفیت Design Documentation
+
+20. نکته مهم
+در این تمرین انتخاب روش پیاده‌سازی بر عهده طراح است.
+به‌عنوان مثال، موارد زیر توسط طراح انتخاب می‌شوند:
+    • ساختار داخلی Queue
+    • روش مدیریت چند Writer
+    • ر
+
+وش مدیریت چند Reader
+    • نحوه نگهداری وضعیت Readerها
+    • مکانیزم Synchronization
+    • روش Notification
+    • روش تشخیص Overwrite
+    • روش تشخیص Lost Item
+    • روش محاسبه CRC
+    • روش مدیریت Timestamp
+    • روش تشخیص Expiration
+طراح باید تصمیمات مهم خود را در Design Note توضیح داده و دلیل انتخاب آن‌ها را بیان کند.
+هدف تمرین صرفاً تولید یک Queue قابل اجرا نیست؛ بلکه ارزیابی توانایی طراحی یک Component قابل اعتماد، Deterministic، قابل تست و مناسب برای استفاده در یک سیستم Embedded است.

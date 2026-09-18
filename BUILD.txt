@@ -1,0 +1,44 @@
+CQ build / test commands (GCC + GDB)
+====================================
+Run from the repo root: /home/farid/Documents/CQ
+
+Configure (once, or after CMakeLists changes) — forces gcc/g++
+--------------------------------------------------------------
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+# regenerates build/compile_commands.json (needed by clangd / IntelliSense)
+
+Build everything
+----------------
+cmake --build build -j$(nproc)
+
+Build one target
+----------------
+cmake --build build --target cq_demo -j$(nproc)
+cmake --build build --target cq_tests -j$(nproc)
+
+Test
+----
+ctest --test-dir build --output-on-failure
+
+# or run the test binary directly:
+./build/cq_tests
+./build/cq_tests --gtest_filter='*'
+
+Run demo
+--------
+./build/cq_demo
+
+Debug (GDB from terminal)
+-------------------------
+gdb --args ./build/cq_tests
+gdb --args ./build/cq_demo
+
+Cursor / VS Code
+----------------
+Debugger: Cursor already has anysphere.cpptools (cppdbg + gdb)
+  (Microsoft ms-vscode.cpptools is not in Cursor's marketplace)
+Ctrl+Shift+B     -> cmake: build (g++)
+Run task         -> cmake: configure | cmake: test
+F5               -> Debug cq_tests / cq_demo (gdb)

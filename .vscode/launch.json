@@ -1,0 +1,59 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug cq_tests",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/cq_tests",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "cmake: build"
+    },
+    {
+      "name": "Debug cq_tests (filter)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/cq_tests",
+      "args": ["--gtest_filter=*"],
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "cmake: build"
+    },
+    {
+      "name": "Debug cq_demo",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/cq_demo",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "cmake: build"
+    }
+  ]
+}

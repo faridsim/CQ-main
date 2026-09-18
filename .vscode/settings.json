@@ -1,0 +1,16 @@
+{
+  "cmake.buildDirectory": "${workspaceFolder}/build",
+  "cmake.configureArgs": [
+    "-DCMAKE_BUILD_TYPE=Debug",
+    "-DCMAKE_C_COMPILER=gcc",
+    "-DCMAKE_CXX_COMPILER=g++"
+  ],
+  "cmake.preferredGenerators": ["Unix Makefiles"],
+
+  "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}"
+  ],
+  "C_Cpp.intelliSenseEngine": "disabled"
+}
+
