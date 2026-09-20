@@ -4,15 +4,14 @@
 #include <chrono>
 #include <cstdint>
 #include <iostream>
-#include <optional>
 #include <thread>
 
 int main()
 {
     cq::CircularQueue<Message, 16, 4> queue(std::chrono::milliseconds{60000});
 
-    const std::optional<cq::ReaderId> reader = queue.registerReader();
-    if (!reader)
+    const cq::ReaderId reader = queue.registerReader();
+    if (reader.value == cq::ReaderId::kInvalid)
     {
         std::cerr << "registerReader failed\n";
         return 1;
@@ -35,7 +34,7 @@ int main()
     // Main thread: read 10 messages.
     for (int i = 0; i < 10; ++i)
     {
-        const auto r = queue.read(*reader, std::chrono::milliseconds{500});
+        const auto r = queue.read(reader, std::chrono::milliseconds{500});
         if (r.status == cq::ReadStatus::Valid)
         {
             std::cout << "read id=" << r.item.id

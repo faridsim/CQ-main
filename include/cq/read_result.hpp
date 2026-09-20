@@ -16,6 +16,7 @@ namespace cq
  * lifetime faults (CrcError, Expired) outrank Overwritten when the delivered
  * slot is bad; lostCount still reports skipped overwritten sequences.
  */
+ //???to fit 6 values into 8 bits
 enum class ReadStatus : std::uint8_t
 {
     /** Item passed CRC and expiration checks; lostCount is zero. */
@@ -39,11 +40,17 @@ enum class ReadStatus : std::uint8_t
  * Behavior: Obtained from CircularQueue::registerReader; pass to read APIs.
  * The numeric value is an index into the queue's fixed reader table.
  */
-struct ReaderId
-{
-    /** Zero-based index of the reader slot inside the queue. */
-    std::size_t value{0U};
+
+
+
+ //std::optional is 8 bytes more than int 
+struct ReaderId {
+    /** Sentinel meaning "no reader slot". Never a valid registered index. */
+    static constexpr std::size_t kInvalid = static_cast<std::size_t>(-1);
+
+    std::size_t value{kInvalid};
 };
+
 
 /**
  * @brief Complete outcome of one tryRead / read call.
@@ -63,6 +70,15 @@ struct ReadResult
     ReadStatus status{ReadStatus::Empty};
 
     /** Copy of the slot contents when a slot was consumed; otherwise default. */
+    // Value-initializes result.item to T{}. No garbage. No undefined behavior,
+    // even if the caller ignores it.
+    //
+    // When status == Empty or status == InvalidReader, the function returns early.
+    // result.item is still just T{} — a safe, deterministic default. Caller should
+    // check status and ignore item.
+    //
+    // When status == Valid, Overwritten, CrcError, or Expired, the function runs
+    // result.item = slot.value; — the real payload is copied in.
     T item{};
 
     /**
@@ -71,9 +87,9 @@ struct ReadResult
      */
     std::uint64_t lostCount{0U};
 
-    /** Clock::now() value recorded when the item was written; default if none. */
-    typename Clock::time_point timestamp{};
+    std::chrono::steady_clock::time_point timestamp{};
 };
+
 
 } // namespace cq
 

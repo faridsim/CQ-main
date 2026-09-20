@@ -4,7 +4,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <optional>
 #include <thread>
 #include <vector>
 //tests not to do
@@ -46,7 +45,8 @@ TEST(BlackBox, MpmcOverwriteStorm)
     const auto idA = q.registerReader();
     const auto idB = q.registerReader();
     //check that both has value
-    ASSERT_TRUE(idA && idB);
+    ASSERT_NE(idA.value, cq::ReaderId::kInvalid);
+    ASSERT_NE(idB.value, cq::ReaderId::kInvalid);
 
 
     constexpr int kWriterThreads = 4;
@@ -75,8 +75,8 @@ TEST(BlackBox, MpmcOverwriteStorm)
     std::this_thread::sleep_for(std::chrono::milliseconds{50});
 
     //same register readers try to read
-    auto rA = q.tryRead(*idA);
-    auto rB = q.tryRead(*idB);
+    auto rA = q.tryRead(idA);
+    auto rB = q.tryRead(idB);
 
     //wait for all writer threads objects to finsih
     for (auto& t : writers)
@@ -108,7 +108,8 @@ TEST(BlackBox, MpmcNotificationWakesCorrectReaders)
     const auto idB = q.registerReader();
 
     // check that both readers registered successfully
-    ASSERT_TRUE(idA && idB);
+    ASSERT_NE(idA.value, cq::ReaderId::kInvalid);
+    ASSERT_NE(idB.value, cq::ReaderId::kInvalid);
 
     constexpr int kWriterThreads = 4;
 
@@ -145,8 +146,8 @@ TEST(BlackBox, MpmcNotificationWakesCorrectReaders)
     //writers are writing ,readers are waiting 
 
     //Yes. Writers may still run; readers enter read() and wait until data arrives or timeout
-    auto rA = q.read(*idA, std::chrono::milliseconds{200});
-    auto rB = q.read(*idB, std::chrono::milliseconds{200});
+    auto rA = q.read(idA, std::chrono::milliseconds{200});
+    auto rB = q.read(idB, std::chrono::milliseconds{200});
 
 
     // wait for all writer threads objects to finish

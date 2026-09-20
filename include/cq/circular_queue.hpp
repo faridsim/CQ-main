@@ -10,7 +10,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
-#include <optional>
 #include <type_traits>
 
 namespace cq
@@ -26,8 +25,8 @@ namespace cq
  * reader keeps its own nextSequence cursor. Slot index = writeSequence % Capacity.
  *
  * @tparam T          Item type: nothrow default-constructible and copy-assignable;
- *                    CrcTraits<T> must define accumulate() (integral/enum have
- *                    a default; structs need a user-written specialization).
+ *                    CrcTraits<T> must define accumulate() (integral has a
+ *                    default; enums and structs need a user-written specialization).
  * @tparam Capacity   Number of ring slots; must be greater than zero.
  * @tparam MaxReaders Maximum concurrently registered readers; must be greater than zero.
  */
@@ -61,7 +60,7 @@ public:
 
     // GATE 5 (updated): was CrcTraits<T>::is_defined; now structural.
     // has_crc_traits<T>::value is true when CrcTraits<T>::accumulate exists,
-    // whether it comes from the library's integral/enum partial or from a
+    // whether it comes from the library's integral partial or from a
     // user-written full specialization. No boolean flag required inside
     // the specialization any more.
     static_assert(has_crc_traits<T>::value,
@@ -167,10 +166,10 @@ public:
      * is set to the current writeSequence, so only items written after this call
      * are visible.
      *
-     * @return ReaderId wrapped in std::optional on success; std::nullopt when
-     *         MaxReaders slots are already active.
+     * @return ReaderId on success; ReaderId with value == ReaderId::kInvalid
+     *         when MaxReaders slots are already active.
      */
-    std::optional<ReaderId> registerReader() noexcept;
+    ReaderId registerReader() noexcept;
 
 
     /**

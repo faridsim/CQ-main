@@ -3,7 +3,6 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
-#include <optional>
 #include <thread>
 
 
@@ -24,15 +23,15 @@ TEST_F(QueueTest, MaxReadersLimit)
 {
     cq::CircularQueue<int, 4, 1> q(std::chrono::milliseconds{1000});
 
-    const std::optional<cq::ReaderId> only = q.registerReader();
+    const cq::ReaderId only = q.registerReader();
 
-    ASSERT_TRUE(only.has_value());
+    ASSERT_NE(only.value, cq::ReaderId::kInvalid);
 
-    EXPECT_FALSE(q.registerReader().has_value());
+    EXPECT_EQ(q.registerReader().value, cq::ReaderId::kInvalid);
 
     q.write(11);
 
-    EXPECT_EQ(q.tryRead(*only).item, 11);
+    EXPECT_EQ(q.tryRead(only).item, 11);
 }
 
 
@@ -47,13 +46,13 @@ TEST_F(QueueTest, InvalidReaderId)
     );
 
 
-    const std::optional<cq::ReaderId> id = q.registerReader();
+    const cq::ReaderId id = q.registerReader();
 
-    ASSERT_TRUE(id.has_value());
+    ASSERT_NE(id.value, cq::ReaderId::kInvalid);
 
     q.write(5);
 
-    EXPECT_EQ(q.tryRead(*id).item, 5);
+    EXPECT_EQ(q.tryRead(id).item, 5);
 }
 
 
@@ -62,9 +61,9 @@ TEST_F(QueueTest, CrcCorruptionOnRetrieve)
 {
     QueueInt q(std::chrono::milliseconds{1000});
 
-    const std::optional<cq::ReaderId> id = q.registerReader();
+    const cq::ReaderId id = q.registerReader();
 
-    ASSERT_TRUE(id.has_value());
+    ASSERT_NE(id.value, cq::ReaderId::kInvalid);
 
 
     q.write(5);
@@ -72,14 +71,14 @@ TEST_F(QueueTest, CrcCorruptionOnRetrieve)
     q.corruptCrcForTest(0U);
 
 
-    const auto r = q.tryRead(*id);
+    const auto r = q.tryRead(id);
 
 
     EXPECT_EQ(r.status, cq::ReadStatus::CrcError);
 
     EXPECT_EQ(r.item, 5);
 
-    EXPECT_EQ(q.tryRead(*id).status, cq::ReadStatus::Empty);
+    EXPECT_EQ(q.tryRead(id).status, cq::ReadStatus::Empty);
 }
 
 
@@ -88,9 +87,9 @@ TEST_F(QueueTest, ExpirationOnRetrieve)
 {
     QueueInt q(std::chrono::milliseconds{100});
 
-    const std::optional<cq::ReaderId> id = q.registerReader();
+    const cq::ReaderId id = q.registerReader();
 
-    ASSERT_TRUE(id.has_value());
+    ASSERT_NE(id.value, cq::ReaderId::kInvalid);
 
 
     q.write(2);
@@ -100,7 +99,7 @@ TEST_F(QueueTest, ExpirationOnRetrieve)
     std::this_thread::sleep_for(std::chrono::milliseconds{101});
 
 
-    const auto r = q.tryRead(*id);
+    const auto r = q.tryRead(id);
 
 
     EXPECT_EQ(r.status, cq::ReadStatus::Expired);
@@ -122,9 +121,9 @@ TEST_F(QueueTest, SizeEmptySemantics)
     EXPECT_EQ(q.capacity(), 4U);
 
 
-    const std::optional<cq::ReaderId> id = q.registerReader();
+    const cq::ReaderId id = q.registerReader();
 
-    ASSERT_TRUE(id.has_value());
+    ASSERT_NE(id.value, cq::ReaderId::kInvalid);
 
 
     q.write(1);
@@ -134,7 +133,7 @@ TEST_F(QueueTest, SizeEmptySemantics)
 
     EXPECT_EQ(q.size(), 1U);
 
-    EXPECT_EQ(q.tryRead(*id).item, 1);
+    EXPECT_EQ(q.tryRead(id).item, 1);
 
 
 
@@ -160,15 +159,15 @@ TEST_F(QueueTest, InsertThenRetrieve)
     QueueInt q(std::chrono::milliseconds{1000});
 
 
-    const std::optional<cq::ReaderId> id = q.registerReader();
+    const cq::ReaderId id = q.registerReader();
 
-    ASSERT_TRUE(id.has_value());
+    ASSERT_NE(id.value, cq::ReaderId::kInvalid);
 
 
     q.write(7);
 
 
-    const auto r = q.tryRead(*id);
+    const auto r = q.tryRead(id);
 
 
     EXPECT_EQ(r.status, cq::ReadStatus::Valid);

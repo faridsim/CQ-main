@@ -14,12 +14,17 @@ struct Message
 
 namespace cq
 {
+
 template <>
 struct CrcTraits<Message>
 {
     static void accumulate(const Message& msg, Crc32& crc) noexcept
     {
-        crc.update(msg.id);
+        // id → 4 little-endian bytes (policy owns representation)
+        crc.update(static_cast<std::uint8_t>(msg.id & 0xFFU));
+        crc.update(static_cast<std::uint8_t>((msg.id >> 8) & 0xFFU));
+        crc.update(static_cast<std::uint8_t>((msg.id >> 16) & 0xFFU));
+        crc.update(static_cast<std::uint8_t>((msg.id >> 24) & 0xFFU));
 
         for (char c : msg.data)
         {
@@ -29,6 +34,7 @@ struct CrcTraits<Message>
         crc.update(msg.channel);
     }
 };
+
 } // namespace cq
 
 #endif // CQ_MESSAGE_HPP
