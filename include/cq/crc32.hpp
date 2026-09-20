@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <utility>
 
 namespace cq
 {
@@ -115,17 +116,24 @@ private:
 /**
  * @brief Primary template: CRC coverage is undefined for unknown types.
  *
- * Purpose: Force an explicit specialization (or the integral/enum default)
- * before CircularQueue can be instantiated with type T.
- * Behavior: is_defined is false; computeCrc static_asserts if used.
+ * Purpose: Force a specialization (or the integral/enum default) before
+ * CircularQueue can be instantiated with type T.
+ * Behavior: Has no accumulate(), so has_crc_traits<T> reports false and
+ * computeCrc / CircularQueue reject this T at compile time.
+ *
+ * For struct types the user writes a full specialization of this template
+ * in namespace cq, next to their struct. That specialization supplies the
+ * per-type CRC policy by defining a static accumulate() function. It is
+ * intentionally non-generic: C++17 has no reflection, so the library cannot
+ * know which members are data vs padding vs pointers.
  *
  * @tparam T Item type lacking a known CRC mapping.
  */
 template <typename T, typename = void>
 struct CrcTraits
 {
-    /** False — CircularQueue / computeCrc reject this T at compile time. */
-    static constexpr bool is_defined = false;
+    // NEW: no members. The presence or absence of accumulate() is what the
+    // detector below keys on. This replaces the old is_defined boolean.
 };
 
 /**
@@ -139,9 +147,6 @@ struct CrcTraits
 template <typename T>
 struct CrcTraits<T, std::enable_if_t<std::is_integral_v<T> || std::is_enum_v<T>>>
 {
-    /** True — default CRC path is available. */
-    static constexpr bool is_defined = true;
-
     /**
      * @brief Feed the entire scalar item into @p crc.
      *
@@ -158,11 +163,30 @@ struct CrcTraits<T, std::enable_if_t<std::is_integral_v<T> || std::is_enum_v<T>>
 };
 
 /**
+ * @brief Detector: does CrcTraits<T> provide a usable accumulate()?
+ *
+ * Purpose: Replace the old is_defined boolean with a structural check.
+ * Behavior: true_type when CrcTraits<T>::accumulate(const T&, Crc32&) is
+ * well-formed; false_type otherwise (primary template has no accumulate,
+ * so unspecialized types report false).
+ *
+ * @tparam T Item type to probe.
+ */
+template <typename T, typename = void>
+struct has_crc_traits : std::false_type {};
+
+template <typename T>
+struct has_crc_traits<T, std::void_t<decltype(
+    CrcTraits<T>::accumulate(std::declval<const T&>(),
+                             std::declval<Crc32&>()))>>
+    : std::true_type {};
+
+/**
  * @brief Compute the CRC-32 digest for an item via CrcTraits.
  *
  * Purpose: Single entry point used by the queue on write and on read verify.
  * Behavior: Instantiates a fresh Crc32, runs CrcTraits<T>::accumulate, returns
- * value(). Compile-fails unless CrcTraits<T>::is_defined is true.
+ * value(). Compile-fails unless has_crc_traits<T>::value is true.
  * @tparam T Item type with defined CrcTraits.
  * @param value Item whose digest is requested.
  * @return CRC-32/IEEE digest covering the traits-defined fields of @p value.
@@ -170,9 +194,9 @@ struct CrcTraits<T, std::enable_if_t<std::is_integral_v<T> || std::is_enum_v<T>>
 template <typename T>
 std::uint32_t computeCrc(const T& value) noexcept
 {
-    static_assert(CrcTraits<T>::is_defined,
+    static_assert(has_crc_traits<T>::value,
                   "Specialize cq::CrcTraits<T> to define CRC coverage for this item type");
-
+        
     Crc32 crc;
     CrcTraits<T>::accumulate(value, crc);
     return crc.value();
